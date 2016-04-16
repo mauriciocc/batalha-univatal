@@ -95,13 +95,13 @@ call _desenha_tabuleiro
 
 mov posX, 2
 mov posY, 2
-mov var_objeto, const_objeto_barril
+mov var_objeto, const_objeto_barcaca
 mov orientacao_escrita, const_vertical
 mov var_tabuleiro, 1
 call _desenha_objeto
 
-mov var_tabuleiro, 2
-call _desenha_tabuleiro
+;mov var_tabuleiro, 2
+;call _desenha_tabuleiro
 
 ret
 
@@ -172,7 +172,8 @@ _valida_posicao_objeto:
     
     mov ax, 0
     mov al, var_objeto
-    dec al
+    mov cx, ax
+    dec al    
     
     cmp orientacao_escrita, const_horizontal
     
@@ -195,14 +196,56 @@ _valida_posicao_objeto:
         mov al, 0
         jmp __vpo_fim   
      __vpo_nao_e_maior_y:
-     
-     mov al, 1
     
+	
+	pop posY
+    pop posX
+    
+	push posX
+    push posY
+	
+	__vpo_loop_validacao:
+	
+        ; Valida se a posicao contem agua        
+		call _calcula_posicao_memoria
+		push si
+			mov si, ax			
+			cmp var_status_tabuleiro1[si], const_agua
+		pop si
+		je __vpo_agua_encontrada
+			mov ax, 0				
+			jmp __vpo_fim
+		__vpo_agua_encontrada:
+		
+		; Incrementa X ou Y
+		cmp orientacao_escrita, const_horizontal
+		jne __vpo_loop_vertical
+		    inc posX
+		    jmp	__vpo_loop_orientacao	
+		__vpo_loop_vertical:
+		    inc posY
+		
+		__vpo_loop_orientacao:	
+	loop __vpo_loop_validacao
+    
+	
+    mov ax, 1    
     
     __vpo_fim:
     pop posY
     pop posX
     
+ret
+
+_calcula_posicao_memoria:
+	push bx
+		mov ax, posY
+		dec ax
+		mov bl, const_numero_colunas
+		mul bl
+		add ax, posX	
+		dec ax
+	pop bx
 ret
                                                               
 ;-------------------------------------------------------------
