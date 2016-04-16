@@ -25,11 +25,13 @@ org 100h
     const_barcaca_horizontal DB const_popa_horizontal, const_conves, const_conves, const_proa_horizontal,0
     const_barcaca_vertical   DB const_popa_vertical, const_conves, const_conves, const_proa_vertical,0
     
+    ; Constantes para utilizar no "var_objeto"
     const_objeto_barril EQU 1
     const_objeto_bote EQU 2
     const_objeto_lancha EQU 3
     const_objeto_barcaca EQU 4
-     
+
+    ; Constantes para utilizar no "orientacao_escrita" 
     const_horizontal            EQU 'H'
     const_vertical              EQU 'V'
     
@@ -38,18 +40,22 @@ org 100h
     const_char_inicio_colunas        EQU 'A'
     const_char_inicio_linhas         EQU '1'
     
+    ; Posicoes iniciais dos tabuleiros
     const_tabuleiro1_x          EQU 1
     const_tabuleiro1_y          EQU 5 
     
     const_tabuleiro2_x          EQU 41
     const_tabuleiro2_y          EQU 5      
     
+    ; Tamanho do tabuleiro
     const_numero_colunas EQU 8
     const_numero_linhas  EQU 8
     
     
+    ; Variavel para informar metodos a respeito de qual tabuleiro esta sendo realizada a operacao (1 ou 2)
     var_tabuleiro DB 1
     
+    ; Aqui guarda as informacoes do tabuleiro, onde estao os barcos, disparos, etc. (matriz 8x8 = 64 posicoes)
     var_status_tabuleiro1 DB 64 DUP(const_agua)
     var_status_tabuleiro2 DB 64 DUP(const_agua)
     
@@ -200,7 +206,7 @@ _valida_posicao_objeto:
 ret
                                                               
 ;-------------------------------------------------------------
-; Traduz um caracter ASCII para um valor (usado para colunas)
+; Traduz um caracter ASCII (A...H) para um valor (1,2,3...) (usado para colunas)
 ; Parametro deve estar no registrador AL e o retorno e feito 
 ; atraves do mesmo registrador
 
@@ -384,6 +390,8 @@ ret
 ;-----------------------------------------------------------
 
 ; Desenha objeto considerando as variaveis:
+; - posX: posicao aonde sera desenhado no X do tabuleiro (1 ate 8 neste caso)
+; - posY: posicao aonde sera desenhado no Y do tabuleiro (1 ate 8 neste caso)
 ; - var_objeto: define qual objeto desenhar (ver constantes)
 ; - orientacao_escrita: define a orientacao do desenho (ver constantes)
 ; - var_tabuleiro
