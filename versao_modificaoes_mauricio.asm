@@ -3,6 +3,7 @@ org 100h
 .DATA
 
     mensagem_inicial DB "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:",0
+    lmensagem_inicial:
 
     ; Constantes de desenho
     const_popa_horizontal       EQU '<'    
@@ -56,8 +57,9 @@ org 100h
     var_tabuleiro DB 1
     
     ; Aqui guarda as informacoes do tabuleiro, onde estao os barcos, disparos, etc. (matriz 8x8 = 64 posicoes)
-    var_status_tabuleiro1 DB 64 DUP(const_agua)
-    var_status_tabuleiro2 DB 64 DUP(const_agua)
+    var_status_tabuleiro1     DB 64 DUP(const_agua)
+    var_status_tabuleiro2     DB 64 DUP(const_agua)
+    var_disparos_outro_player DB 64 DUP(const_agua)
     
 
     posX DW 0
@@ -75,7 +77,7 @@ org 100h
     aux  DB 0
 
 .CODE
-
+         
 
 MOV AX, 0B800h
 MOV ES, AX  
@@ -87,7 +89,6 @@ MOV ES, AX
 
 
 ; Aqui precisamos coletar as posicoes do usuario
-
 
 
 mov var_tabuleiro, 1
@@ -108,7 +109,171 @@ ret
 
 
 ; Logica ----------------------------------------
-                                                              
+
+;-------------------------------------------------------------
+; Efetua disparo na posicao especificada (grava na variavel var_status_tabuleiro2)
+;
+; Parametros:
+;  - posX
+;  - posY
+;
+; Retorna:
+;  - AL = 0 se disparo nao pode ser efetuado
+;  - AL = 1 se disparo foi efetuado
+;
+; Exemplo de uso
+;
+;mov posX, 2
+;mov posY, 2
+;call _efetua_disparo
+_efetua_disparo:
+    push si
+    
+        call _valida_disparo
+        
+        cmp al, 1
+        
+        je __ed_run
+            jmp __ed_end
+        __ed_run:
+        
+        call _calcula_posicao_memoria    
+        mov si, ax
+        mov var_status_tabuleiro2[si], const_posicao_tiro_feito
+        
+        mov ax,1
+    
+    __ed_end:
+    pop si        
+
+ret
+
+;-------------------------------------------------------------
+; Busca por disparo efetuado (var_disparos_outro_player) e 
+; altera em memoria com os resultados 
+; (var_disparos_outro_player e var_status_tabuleiro1)
+;
+; Variaveis utilizadas:
+;   - var_disparos_outro_player 
+;   - var_status_tabuleiro1
+;
+; O retorno e feito no registrador AX:
+;  1 -> caso tenha acertado algo
+;  0 -> nao acertou nada
+; Exemplo de uso:
+;
+;; Insere disparo na posicao 2
+;lea si, var_disparos_outro_player
+;add si, 2
+;mov [si], const_posicao_tiro_feito
+;
+;; Insere barril na posicao 2
+;lea si, var_status_tabuleiro1
+;add si, 2
+;mov [si], const_barril
+;
+;call _substitui_disparo_outro_player
+_substitui_disparo_outro_player:
+    push si
+    push bx
+    
+        lea si, var_disparos_outro_player
+        call _busca_disparo_outro_player
+        
+        cmp ax, -1
+        
+        jne __sdop_encontrou_disparo
+            mov ax, 0
+            ret
+        __sdop_encontrou_disparo:
+        
+        ;checa se acertou algo
+        
+        lea si, var_status_tabuleiro1
+        add si, ax
+        
+        push ax
+            mov al, [si]    
+            call _acertou_algo
+            cmp al, 1
+        pop ax
+        
+        je __sdop_acertou_algo
+            ;aqui nao acertou
+            mov bl, const_agua_atingida
+            mov bh, 0       
+            jmp __sdop_acertou_algo_end
+        __sdop_acertou_algo:  
+            ;aqui quer dizer que acertou
+            mov bl, const_embarcacao_atingida
+            mov bh, 1
+        __sdop_acertou_algo_end:    
+                  
+        
+        ;pega caracter e substui nas memorias    
+        lea si, var_disparos_outro_player
+        add si, ax
+        mov [si], bl
+        
+        lea si, var_status_tabuleiro1
+        add si, ax
+        mov [si], bl
+        
+        mov ax, 0
+        mov al, bh
+        
+    pop bx    
+    pop si
+
+ret
+
+
+;-------------------------------------------------------------
+; Realiza busca por disparo efetuado (ver constante "const_posicao_tiro_feito")
+; Parametros:
+;  - SI (deve estar setado no offset do vetor a ser verificado, acredito que sera "var_disparos_outro_player")
+; Logica:
+;  Busca no vetor um valor igual a "const_posicao_tiro_feito"
+;  Caso encontre: retorna o indice do elemento dentro do vetor no registrador AX
+;  Caso nao econtre: retorna no AX -> -1
+; 
+; Exemplo de uso:
+
+;; Escreve disparo na posicao 3 do vetor (si+2)
+;lea si, var_disparos_outro_player
+;add si, 2
+;mov [si], const_posicao_tiro_feito
+;
+;; Busca a posicao do disparo, apos chamada o registrador AX contera o valor 2
+;lea si, var_disparos_outro_player
+;call _busca_disparo_outro_player
+ 
+_busca_disparo_outro_player:    
+        
+    mov ax, 0
+    
+    __bdop_loop:
+        push si
+            add si, ax
+            mov bl, [si]
+        pop si
+        
+        cmp bl, const_posicao_tiro_feito
+        
+        je __bdop_end_loop
+        
+        inc ax
+        
+        cmp ax, 64
+        je __bdop_end_loop_not_found
+            
+        
+    jmp __bdop_loop
+    
+    __bdop_end_loop_not_found:
+    mov ax, -1
+    __bdop_end_loop:  
+ret                                                              
 
 ;-------------------------------------------------------------
 ; Verifica se posicao selecionada para disparo ja nao foi utilizada
@@ -124,9 +289,8 @@ _valida_disparo:
     push bx
     push si
     
-    mov ax, posX    
-    mul posY
-    
+    call _calcula_posicao_memoria 
+       
     mov si, ax
     mov al, var_status_tabuleiro2[si]
     
@@ -161,6 +325,7 @@ ret
 ;  - Verifica se ele vai ser desenhado ao longo do X ou Y
 ;  - Incrementa o valor da posicao X ou Y dependendo da orientacao da escrita
 ;  - Verifica se os valores nao estouram o tamanho do tabuleiro
+;  - Checa se o posicionamento da embarcacao nao ira sobrepor outra embarcacao
 ;
 ; O retorno e feito no registrador AL
 ; caso retorne 1 -> quer dizer que a posicao e valida
@@ -437,7 +602,7 @@ ret
 ; - posY: posicao aonde sera desenhado no Y do tabuleiro (1 ate 8 neste caso)
 ; - var_objeto: define qual objeto desenhar (ver constantes)
 ; - orientacao_escrita: define a orientacao do desenho (ver constantes)
-; - var_tabuleiro
+; - var_tabuleiro: tabuleiro onde sera inserida a embarcacao
 
 _desenha_objeto:    
     
