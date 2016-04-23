@@ -669,31 +669,25 @@ _desenha_tabuleiro:
     call _fast_string_write
 
 
-    ; Constroi corpo do tabuleiro
-    mov cx, 0
+    ; Constroi corpo do tabuleiro    
     mov al, const_char_inicio_linhas
-    mov orientacao_escrita, const_vertical
+    mov cx, 0
     mov si, bx
     dt_loop_rows:
 
         inc posY ; Proxima linha
         mov str_buffer[0], al ; Move o numero da coluna
+        
         mov di, 1
-
+        mov ch, 0
          __dt_stat_loop_cols:
             push ax
-                mov al, cl
-                mov ah, const_numero_colunas
-                mul ah
-                add al, ch
-                push si
-                    add si, ax
-                    mov al, [si]
-                    mov str_buffer[di], al
-                pop si
+                mov al, [si]
+                mov str_buffer[di], al
             pop ax
 
         inc di
+        inc si
         inc ch
         cmp ch, const_numero_colunas
         jl __dt_stat_loop_cols
