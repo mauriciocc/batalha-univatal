@@ -1,22 +1,29 @@
-org 100h           
+            org 100h           
 
 .DATA
 
-    mensagem_inicial DB "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:"
+    mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:"
     mensagem_inicial_size = $ - mensagem_inicial
 
-    mensagem_valor1   DB "ESCOLHA UM DOS SEGUINTES OBJETOS QUE DESEJA POSICIONAR NO TABULEIRO:"
+    mensagem_valor1   DB "ESCOLHA UM DOS SEGUINTES OBJETOS QUE DESEJA POSICIONAR NO TABULEIRO: "
     mensagem_valor1_size = $ - mensagem_valor1
 
-    mensagem_valor1_2 DB "{1}- BARRIL, {2}- BOTE, {3}- LANCHA, {4}- BARCACA"
+    mensagem_valor1_2 DB "          {1}- BARRIL, {2}- BOTE, {3}- LANCHA, {4}- BARCACA          "
     mensagem_valor1_2_size = $ - mensagem_valor1_2
 
-    mensagem_valor2 DB "DIGITE A ORIENTACAO DO OBJETO: "
+    mensagem_valor2 DB   "DIGITE A ORIENTACAO DO OBJETO (H-HORIZONTAL, V-VERTICAL):            "
     mensagem_valor2_size = $ - mensagem_valor2
 
-    mensagem_valor3 DB "DIGITE O NUMERO COLUNA E O NUMERO DA LINHA DE 1 A 8 "
+    mensagem_valor3 DB   "DIGITE A COLUNA E EM SEGUIDA A LINHA( EX: C3 )                       "
     mensagem_valor3_size = $ - mensagem_valor3
+    
+    mensagem_valor4 DB   "EMBARCACAO JA UTILIZADA, ESCOLHA OUTRA EMBARCACAO PARA POSICIONAR    "
+    mensagem_valor4_size = $ - mensagem_valor4
+    
+    mensagem_valor5 DB   "                                                                     "
+    mensagem_valor5_size = $ - mensagem_valor5
 
+    
     ; Constantes de desenho
     const_popa_horizontal       EQU '<'
     const_proa_horizontal       EQU '>'
@@ -43,7 +50,8 @@ org 100h
     const_objeto_bote EQU 2
     const_objeto_lancha EQU 3
     const_objeto_barcaca EQU 4
-
+    
+    
     ; Constantes para utilizar no "orientacao_escrita"
     const_horizontal            EQU 'H'
     const_vertical              EQU 'V'
@@ -88,8 +96,13 @@ org 100h
     var_objeto DB const_objeto_barril
 
     mult DB 0
-    aux  DB 0
-
+    aux  DB 0    
+    cont_objeto DB 4
+    cont_barril DB 0
+    cont_bote DB 0
+    cont_lancha DB 0
+    cont_barcaca DB 0
+    
     str_buffer DB 64 DUP(?)
 
 .CODE
@@ -105,7 +118,7 @@ mov cx, mensagem_inicial_size
 call _fast_string_write
 
 
-; Aqui precisamos coletar as posicoes do usuario
+; AQUI CHAMAMOS AS FUNCOES PARA POSICIONAMENTO DE OBJETOS NO TABULEIRO DO JOGADOR
 ;;;;;;;;;**************************************************************
 mov var_tabuleiro, 1
 call _desenha_tabuleiro
@@ -120,16 +133,25 @@ lea bp, mensagem_valor1
 mov cx, mensagem_valor1_size
 CALL _fast_string_write
 
-add posX, 10
-inc posY
+mov posX, 1
+mov posY, 16
 lea bp, mensagem_valor1_2
 mov cx, mensagem_valor1_2_size
 CALL _fast_string_write
-
+           
+           
 CALL SEL_OBJETO
+                       
 
 mov posX, 1
-inc posY
+mov posY,17
+lea bp, mensagem_valor5
+mov cx, mensagem_valor5_size
+CALL _fast_string_write
+
+ 
+mov posX, 1
+mov posY,18
 lea bp, mensagem_valor2
 mov cx, mensagem_valor2_size
 CALL _fast_string_write
@@ -137,29 +159,34 @@ CALL _fast_string_write
 
 CALL ORIENTACAO
 
+
 mov posX, 1
-inc posY
+mov posY,19
 lea bp, mensagem_valor3
 mov cx, mensagem_valor3_size
 CALL _fast_string_write
 
 
-CALL AGUARDA_NUMERO
+CALL AGUARDA_LETRA
     MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
 CALL AGUARDA_NUMERO
     MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA
 
 mov var_tabuleiro, 1
 call _desenha_objeto
-jmp volta_msgm
+
+SUB cont_objeto,1      ; VERIFICA SE AS 4 EMBARCACOES FORAM UTILIZADAS
+JNZ volta_msgm
+    
 
 mov var_tabuleiro, 2
 call _desenha_tabuleiro
 
 ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;; FUNCOES DE LEITURA DO DE TECLAS ;;;;;;;;;;;;;;;;
+                                                                 
+                                                                 
+;>>>>>>>>>>>>>>>>>>>>FUNCAO AGUARDAR SELECAO DE ORIENTACAO OBJETO
 
 ORIENTACAO:
     MOV BL, 48h       ;LETRA H
@@ -170,18 +197,34 @@ ORIENTACAO:
 TESTA_ORIENTACAO:
 
     CMP AL, BL             ; COMPARA SE VALOR DIGITADA EH IGUAL
-    JE SALVA_ORIENTACAO         ; SE SIM IRA SALVAR A LETRA NO VETOR DE JOGADAS
+    JE SALVA_ORIENTACAO    ; SE SIM IRA SALVAR A LETRA NO VETOR DE JOGADAS
     CMP AL,BH              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR SE VALOR DIGITADO EH MAIOR QUE "H" OU MENOR QUE "A"
     JE SALVA_ORIENTACAO      ; VALOR DEVE APRESENTAR CARRY, CASO CONTRARIO VALOR NAO EH ACEITO
 
                           ; INCREMENTA CONTADOR
     JMP ORIENTACAO        ; RECURSAO
-
+                     
+                     
 SALVA_ORIENTACAO:
     mov orientacao_escrita,AL
 
 ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+;>>>>>>>>>>>>>>>>>>>>FUNCAO AGUARDAR SELECAO DE OBJETO:
+
+
+SEL_OBJETO_MSG:
+
+mov posX, 1
+mov posY,17
+lea bp, mensagem_valor4
+mov cx, mensagem_valor4_size
+CALL _fast_string_write
+
+                     
+                     
 SEL_OBJETO:
 
     MOV BL, 31h            ;REGISTRADOR AUXILIAR
@@ -190,11 +233,12 @@ SEL_OBJETO:
     INT 16h                ;DO INT 16h (FUNCAO QUE ESPERA A TECLA)
 
 TESTA_OBJETO:
-
+    
+    
     CMP AL, BL             ; COMPARA SE VALOR DIGITADA EH IGUAL
-    JE SALVA_OBJETO        ; SE SIM IRA SALVAR A LETRA NO VETOR DE JOGADAS
+    JE SALVA_OBJETO        ; SE SIM IRA SALVAR 
 
-    MOV CL,BL              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR SE VALOR DIGITADO EH MAIOR QUE "H" OU MENOR QUE "A"
+    MOV CL,BL              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR O VALOR 
     SUB CL,BH
     JNC SEL_OBJETO         ; VALOR DEVE APRESENTAR CARRY, CASO CONTRARIO VALOR NAO EH ACEITO
 
@@ -202,15 +246,84 @@ TESTA_OBJETO:
     JMP TESTA_OBJETO       ; RECURSAO
 
 SALVA_OBJETO:
+     SUB AL,48 
+     mov var_objeto,AL     
+     
+     testa_barril:
+       cmp var_objeto,const_objeto_barril
+       JE barril_utilizado
+                          
+     
+     testa_bote:
+       cmp var_objeto,const_objeto_bote
+       JE bote_utilizado  
+     
+     testa_lancha:
+       cmp var_objeto,const_objeto_lancha
+       JE lancha_utilizada
+     
+     testa_barcaca:
+       cmp var_objeto,const_objeto_barcaca
+       JE barcaca_utilizada  
+     
+     
+       
+barril_utilizado:                                                                           
+   CMP cont_barril,1
+   JE  SEL_OBJETO_MSG
+   inc cont_barril                                                                             
+   ret
+   
+bote_utilizado:                                                                           
+   CMP cont_bote,1
+   JE SEL_OBJETO_MSG 
+   inc cont_bote
+   
+   ret
+   
+lancha_utilizada:                                                                           
+   CMP cont_lancha,1
+   JE SEL_OBJETO_MSG
+   inc cont_lancha
+   ret
+   
+barcaca_utilizada:                                                                           
+   CMP cont_barcaca,1
+   JE SEL_OBJETO_MSG  
+   inc cont_barcaca
+   
+   ret
 
-    SUB AL,48
-    mov var_objeto,AL
+AGUARDA_LETRA:
+    MOV BL, 41h       ;REGISTRADOR AUXILIAR
+    MOV BH, 48h
+    MOV AX,0               ;CHAMA O SERVICO 0
+    INT 16h                ;DO INT 16h (FUNCAO QUE ESPERA A TECLA)
+
+TESTA_LETRA:
+
+    CMP AL, BL             ; COMPARA SE VALOR DIGITADA EH IGUAL
+    JE SALVA_LETRA         ; SE SIM IRA SALVAR A LETRA NO VETOR DE JOGADAS
+
+    MOV CL,BL              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR SE VALOR DIGITADO EH MAIOR QUE "H" OU MENOR QUE "A"
+    SUB CL,BH
+    JNC AGUARDA_LETRA      ; VALOR DEVE APRESENTAR CARRY, CASO CONTRARIO VALOR NAO EH ACEITO
+
+    INC BL                 ; INCREMENTA CONTADOR
+    JMP TESTA_LETRA        ; RECURSAO
+
+SALVA_LETRA:
+
+    MOV AH, 0
+    SUB AL,64
+
 
 ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 
-
+;>>>>>>>>>>>>>>>>>>>>FUNCAO AGUARDAR PRESSIONAMENTO TECLA DE 1 A 8
 
 AGUARDA_NUMERO:
 
@@ -222,9 +335,9 @@ AGUARDA_NUMERO:
 TESTA_NUMERO:
 
     CMP AL, BL             ; COMPARA SE VALOR DIGITADA EH IGUAL
-    JE SALVA_NUMERO         ; SE SIM IRA SALVAR A LETRA NO VETOR DE JOGADAS
+    JE SALVA_NUMERO         ; SE SIM IRA SALVAR 
 
-    MOV CL,BL              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR SE VALOR DIGITADO EH MAIOR QUE "H" OU MENOR QUE "A"
+    MOV CL,BL              ; UTILIZA UM CONTADOR AUXILIAR PARA COMPARAR O VALOR 
     SUB CL,BH
     JNC AGUARDA_NUMERO      ; VALOR DEVE APRESENTAR CARRY, CASO CONTRARIO VALOR NAO EH ACEITO
 
@@ -233,7 +346,6 @@ TESTA_NUMERO:
 
 SALVA_NUMERO:
 
-    ;mov aux, AL
     MOV AH, 0
     SUB AL,48
 
