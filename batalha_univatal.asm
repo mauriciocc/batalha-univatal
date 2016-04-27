@@ -161,6 +161,8 @@ call cursor
 CALL ORIENTACAO
 
 
+_seleciona_posicao_objeto:
+
 mov posX, 1
 mov posY,19
 lea bp, mensagem_valor3
@@ -171,7 +173,22 @@ call cursor
 CALL AGUARDA_LETRA
     MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
 CALL AGUARDA_NUMERO
-    MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA
+    MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA 
+    
+                           
+; Aqui posicao do objeto sera validada
+; Caso retorne 1 no valor AL quer dizer que a posicao e valida
+; Caso retorne 0 quer dizer que sobrepoem outra embarcacao ou fica fora do tabuleiro                            
+call _valida_posicao_objeto   
+
+cmp al, 1
+
+je __posicao_valida_desenha_objeto
+
+; Aqui pode mostrar alguma mensagem
+jmp _seleciona_posicao_objeto
+
+__posicao_valida_desenha_objeto:
 
 mov var_tabuleiro, 1
 call _desenha_objeto
