@@ -138,7 +138,8 @@ mov posY, 16
 lea bp, mensagem_valor1_2
 mov cx, mensagem_valor1_2_size
 CALL _fast_string_write
-           
+call cursor
+
            
 CALL SEL_OBJETO
                        
@@ -148,14 +149,14 @@ mov posY,17
 lea bp, mensagem_valor5
 mov cx, mensagem_valor5_size
 CALL _fast_string_write
-
+call cursor
  
 mov posX, 1
 mov posY,18
 lea bp, mensagem_valor2
 mov cx, mensagem_valor2_size
 CALL _fast_string_write
-
+call cursor
 
 CALL ORIENTACAO
 
@@ -165,7 +166,7 @@ mov posY,19
 lea bp, mensagem_valor3
 mov cx, mensagem_valor3_size
 CALL _fast_string_write
-
+call cursor
 
 CALL AGUARDA_LETRA
     MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
@@ -1080,6 +1081,14 @@ popa
 
 ret
 
+; show current cursor position:
+cursor:
+mov     al, '>'
+mov     ah, 0eh
+int     10h
+RET
+   
+   
 _wait_key_press:
     ; wait for any key press....
     mov     ah, 0
