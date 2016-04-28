@@ -1,4 +1,4 @@
-            org 100h           
+org 100h           
 
 .DATA
 
@@ -22,6 +22,12 @@
     
     mensagem_valor5 DB   "                                                                     "
     mensagem_valor5_size = $ - mensagem_valor5
+
+    msg_aguardando_outro_player DB "AGUARDANDO OUTRO PLAYER POSICIONAR SUAS EMBARCACOES..."
+    msg_aguardando_outro_player_size = $ - msg_aguardando_outro_player
+    
+    file_player_1 DB "JOGADOR1.TXT", 0  
+    file_player_2 DB "JOGADOR2.TXT", 0  
 
     
     ; Constantes de desenho
@@ -80,8 +86,19 @@
 
     ; Aqui guarda as informacoes do tabuleiro, onde estao os barcos, disparos, etc. (matriz 8x8 = 64 posicoes)
     var_status_tabuleiro1 DB 64 DUP(const_agua)
+    
+    
+    var_control DB 4 DUP(0)
     var_status_tabuleiro2 DB 64 DUP(const_agua)
+    var_control_size = $ - var_control
+    
+    
+    var_control_o DB 4 DUP(0)
     var_disparos_outro_player DB 64 DUP(const_agua)
+    var_control_o_size = $ - var_control_o
+
+    ; Define se e o player 1 ou 2
+    player DB 1
 
 
     posX DW 0
@@ -106,6 +123,9 @@
     str_buffer DB 64 DUP(?)
 
 .CODE
+
+; Limpa status anterior caso exista
+call _escreve_status_player
 
 MOV AX, 0B800h
 MOV ES, AX
@@ -138,7 +158,7 @@ mov posY, 16
 lea bp, mensagem_valor1_2
 mov cx, mensagem_valor1_2_size
 CALL _fast_string_write
-call cursor
+call _cursor
 
            
 CALL SEL_OBJETO
@@ -149,14 +169,14 @@ mov posY,17
 lea bp, mensagem_valor5
 mov cx, mensagem_valor5_size
 CALL _fast_string_write
-call cursor
+call _cursor
  
 mov posX, 1
 mov posY,18
 lea bp, mensagem_valor2
 mov cx, mensagem_valor2_size
 CALL _fast_string_write
-call cursor
+call _cursor
 
 CALL ORIENTACAO
 
@@ -168,7 +188,7 @@ mov posY,19
 lea bp, mensagem_valor3
 mov cx, mensagem_valor3_size
 CALL _fast_string_write
-call cursor
+call _cursor
 
 CALL AGUARDA_LETRA
     MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
@@ -198,7 +218,42 @@ JNZ volta_msgm
     
 
 mov var_tabuleiro, 2
-call _desenha_tabuleiro
+call _desenha_tabuleiro 
+
+
+; Sinaliza que esta pronto para jogar
+mov var_control[0], 1
+call _escreve_status_player
+
+
+; Bloqueia ate outro jogador estar pronto
+
+aguardando_outro_player:
+
+    call _le_arquivo_outro_player
+
+    cmp var_control_o[0], 1
+
+    je outro_player_esta_pronto
+
+    mov posX, 1
+    mov posY, 25
+    lea bp, msg_aguardando_outro_player
+    mov cx, msg_aguardando_outro_player_size
+    CALL _fast_string_write
+    call _cursor
+    
+
+    jmp aguardando_outro_player
+
+outro_player_esta_pronto:
+
+
+; Aqui inicia-se a logica do jogo
+
+
+
+
 
 ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1099,15 +1154,74 @@ popa
 ret
 
 ; show current cursor position:
-cursor:
-mov     al, '>'
-mov     ah, 0eh
-int     10h
-RET
-   
-   
-_wait_key_press:
-    ; wait for any key press....
-    mov     ah, 0
-    int     16h
+_cursor:
+push ax
+    mov     al, '>'
+    mov     ah, 0eh
+    int     10h
+pop ax
 ret
+
+
+_le_arquivo_outro_player:
+    pusha
+        cmp player, 1
+
+        je __laop_player_1
+            lea dx, file_player_1            
+            jmp __laop_player_end
+        __laop_player_1:
+            lea dx, file_player_2
+         __laop_player_end:
+
+        MOV AH, 3Dh     ;abertura de arquivo
+        MOV AL, 0       ;apenas para leitura
+        INT 21h
+
+        JC __laop_erro_ao_abrir_arquivo
+            MOV BX, AX      ;salva ponteiro do arquivo aberto
+            
+            MOV CX, var_control_o_size      ;quantidade de bytes para ler
+            lea DX, var_control_o
+            MOV AH, 3Fh
+            INT 21h
+
+            MOV AH, 3Eh     ;fechar arquivo
+            INT 21h
+        __laop_erro_ao_abrir_arquivo:         
+    popa
+    
+RET
+
+
+_escreve_status_player:
+    pusha
+        cmp player, 1
+
+        je __esp_player_1
+            lea dx, file_player_2            
+            jmp __esp_player_end
+        __esp_player_1:
+            lea dx, file_player_1
+         __esp_player_end:
+
+        
+        MOV AH, 3Ch
+        MOV AL, 1       ;apenas escrita (ou 2 para leitura e escrita)
+        INT 21h
+        
+        JC __esp_erro_ao_abrir_arquivo
+            MOV BX, AX      ;salva ponteiro do arquivo aberto
+
+            MOV CX, var_control_size      ;quantidade de bytes para escrever
+            lea dx, var_control        
+            MOV AH, 40h
+            INT 21h
+            
+            MOV AH, 3Eh     ;fechar arquivo
+            INT 21h
+        __esp_erro_ao_abrir_arquivo:
+
+    popa
+
+RET
