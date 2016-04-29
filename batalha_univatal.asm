@@ -21,10 +21,13 @@ org 100h
     mensagem_valor4_size = $ - mensagem_valor4
     
     mensagem_valor5 DB   "                                                                     "
-    mensagem_valor5_size = $ - mensagem_valor5
+    mensagem_valor5_size = $ - mensagem_valor5 
 
     msg_aguardando_outro_player DB "AGUARDANDO OUTRO PLAYER POSICIONAR SUAS EMBARCACOES..."
     msg_aguardando_outro_player_size = $ - msg_aguardando_outro_player
+    
+    msg_aguardando_outro_player_jogar DB "AGUARDANDO OUTRO PLAYER JOGAR..."
+    msg_aguardando_outro_player_jogar_size = $ - msg_aguardando_outro_player_jogar
     
     file_player_1 DB "JOGADOR1.TXT", 0  
     file_player_2 DB "JOGADOR2.TXT", 0  
@@ -88,18 +91,23 @@ org 100h
     var_status_tabuleiro1 DB 64 DUP(const_agua)
     
     
-    var_control DB 4 DUP(0)
+    ; Controle 5 posicoes:
+    ; 0. Jogador pronto (0 = posicionando embarcacoes, 1 = pronto pra jogar)
+    ; 1. Quem esta jogando, poder ser (1 = player 1, 2 player 2) - OBS: esta flag e controlada no player 1
+    ; 2. Sinaliza que player que esta jogando realizou a jogada
+    ; 3. Sinaliza que a jogada do player foi processada e o retorno pode ser lido
+    ; 4. Sinaliza o fim do processamento do player
+    var_control DB 5 DUP(0)
     var_status_tabuleiro2 DB 64 DUP(const_agua)
     var_control_size = $ - var_control
     
     
-    var_control_o DB 4 DUP(0)
+    var_control_o DB 5 DUP(0)
     var_disparos_outro_player DB 64 DUP(const_agua)
     var_control_o_size = $ - var_control_o
 
     ; Define se e o player 1 ou 2
     player DB 1
-
 
     posX DW 0
     posY DW 0
@@ -221,8 +229,39 @@ mov var_tabuleiro, 2
 call _desenha_tabuleiro 
 
 
+
+
+; Objetos teste
+;mov orientacao_escrita, const_vertical
+;
+;mov posX, 1
+;mov posY, 1
+;mov var_objeto, const_objeto_barril
+;mov var_tabuleiro, 1
+;call _desenha_objeto
+;
+;mov posX, 2
+;mov posY, 1
+;mov var_objeto, const_objeto_bote
+;mov var_tabuleiro, 1
+;call _desenha_objeto
+;
+;mov posX, 3
+;mov posY, 1
+;mov var_objeto, const_objeto_lancha
+;mov var_tabuleiro, 1
+;call _desenha_objeto
+;
+;mov posX, 4
+;mov posY, 1
+;mov var_objeto, const_objeto_barcaca
+;mov var_tabuleiro, 1
+;call _desenha_objeto
+
+
 ; Sinaliza que esta pronto para jogar
 mov var_control[0], 1
+mov var_control[1], 1
 call _escreve_status_player
 
 
@@ -235,13 +274,13 @@ aguardando_outro_player:
     cmp var_control_o[0], 1
 
     je outro_player_esta_pronto
-
+    
     mov posX, 1
     mov posY, 25
     lea bp, msg_aguardando_outro_player
     mov cx, msg_aguardando_outro_player_size
     CALL _fast_string_write
-    call _cursor
+    call _cursor    
     
 
     jmp aguardando_outro_player
@@ -249,13 +288,111 @@ aguardando_outro_player:
 outro_player_esta_pronto:
 
 
-; Aqui inicia-se a logica do jogo
+mov posX, 1
+mov posY, 25
+lea bp, mensagem_valor5
+mov cx, mensagem_valor5_size
+CALL _fast_string_write 
 
+loop_game:
+
+   
+
+    call _verifica_se_player_joga
+    
+    cmp al, 1
+    
+    je player_joga:
+    
+        ; Aqui player nao joga, aguarda
+        mov posX, 1
+        mov posY, 25
+        lea bp, msg_aguardando_outro_player_jogar
+        mov cx, msg_aguardando_outro_player_jogar_size
+        CALL _fast_string_write
+        call _cursor
+        
+        
+        ; Checa se o outro player jogou
+        call _outro_player_jogou        
+        cmp al, 1
+        
+        ; Se for diferente de 1 quer dizer que outro player ainda nao jogou
+        jne loop_game
+        
+        ; processa jogada do outro player
+        call _substitui_disparo_outro_player
+        
+        mov var_tabuleiro, 1
+        call _desenha_tabuleiro
+        
+        ; Salva 1 caso nao acertou e 2 caso acertou disparo
+        ;inc al        
+        mov var_control[3], 2     
+        call _escreve_status_player
+        
+        call _aguarda_outro_player_processar
+        
+        
+        ; Limpa flags
+        mov var_control[2], 0
+        mov var_control[3], 0
+        mov var_control[4], 0
+        call _escreve_status_player
+        
+        
+        ; Volta para o loop
+        jmp loop_game
+        
+        
+    
+    
+    player_joga: 
+                
+        ; Limpa flag "processamento realizado"
+        mov var_control[4], 0
+        call _escreve_status_player 
+        
+        call _wait_key_press
+        ;Aqui player joga  
+        
+        ;Codigo jeremias
+        
+        
+        ; Informa jogada
+        mov var_control[2], 1
+        call _escreve_status_player
+        
+        call _aguarda_resposta
+        
+        ; Processa resposta
+        cmp var_control_o[3], 2
+        
+        je acertou_disparo
+            ;Aqui quer dizer que errou o disparo
+            call _outro_player_joga
+                                
+        acertou_disparo:
+        
+        ; Sinaliza fim do processamento
+        mov var_control[2], 0
+        mov var_control[3], 0
+        mov var_control[4], 1
+        call _escreve_status_player
+        
+        inc posX
+
+
+
+
+jmp loop_game 
 
 
 
 
 ret
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                                                  
                                                                  
@@ -434,6 +571,76 @@ ret
 ; Logica ----------------------------------------
 
 
+
+;-------------------------------------------------------------
+_outro_player_joga:
+ cmp player, 1
+ je __opj_player_1
+    ;aqui e player 2
+    mov var_control_o[1], 1
+    call _escreve_troca_player2
+ ret 
+ __opj_player_1:
+    mov var_control[1], 2
+    call _escreve_status_player   
+ ret 
+
+
+;-------------------------------------------------------------
+_aguarda_resposta:
+    call _le_arquivo_outro_player    
+    cmp var_control_o[3], 1
+    jne _aguarda_resposta 
+ret
+
+;-------------------------------------------------------------
+_aguarda_outro_player_processar:   
+    call _le_arquivo_outro_player    
+    cmp var_control_o[4], 1
+    jne _aguarda_outro_player_processar   
+ret
+
+;-------------------------------------------------------------
+; Retorna no AL: 
+;  - 1 se o outro player efetuou a jogada 
+;  - 0 se o outro player ainda nao efetuou a jogada 
+_outro_player_jogou:
+    cmp player, 1
+    je __opjo_player_1
+        ;player 2 - Verifica no arquivo do player 1 pois e o master do jogo
+        call _le_arquivo_outro_player
+        mov al, var_control_o[2]
+        jmp __opjo_end
+    __opjo_player_1:
+        mov al, var_control[2]        
+    __opjo_end:
+ret
+
+;-------------------------------------------------------------
+; Retorna no AL: 
+;  - 1 se player joga, 
+;  - 0 se outro player joga
+_verifica_se_player_joga:
+    cmp player, 1
+    je __vspj_player_1
+        ;player 2 - Verifica no arquivo do player 1 pois e o master do jogo
+        call _le_arquivo_outro_player
+        cmp var_control_o[1], 2
+        jmp __vspj_end
+    __vspj_player_1:
+        cmp var_control[1], 1
+    __vspj_end:
+    
+    mov al, 0
+    
+    jne __vspj_player_nao_joga:
+        mov al, 1
+    __vspj_player_nao_joga:
+    
+    
+    
+ret
+
 ;-------------------------------------------------------------
 ; Efetua disparo na posicao especificada (grava na variavel var_status_tabuleiro2)
 ;
@@ -508,7 +715,7 @@ _substitui_disparo_outro_player:
 
         jne __sdop_encontrou_disparo
             mov ax, 0
-            ret
+            jmp __sdop_end
         __sdop_encontrou_disparo:
 
         ;checa se acertou algo
@@ -545,7 +752,8 @@ _substitui_disparo_outro_player:
 
         mov ax, 0
         mov al, bh
-
+        
+    __sdop_end:
     pop bx
     pop si
 
@@ -1130,7 +1338,7 @@ pusha
 
         MOV AX, 0700h
         MOV ES, AX
-
+        
         mov     bh, 0    ; page.
         ;mov     bl, 00fh ; default attribute.
         mov bl, 00011111b
@@ -1160,6 +1368,14 @@ push ax
     mov     ah, 0eh
     int     10h
 pop ax
+ret
+
+; wait for any key press....
+_wait_key_press:
+    push ax
+        mov     ah, 0
+        int     16h
+    pop ax
 ret
 
 
@@ -1225,3 +1441,25 @@ _escreve_status_player:
     popa
 
 RET
+
+_escreve_troca_player2:
+    pusha
+        lea dx, file_player_1                
+        MOV AH, 3Ch
+        MOV AL, 1       ;apenas escrita (ou 2 para leitura e escrita)
+        INT 21h
+        
+        JC __etp2_erro_ao_abrir_arquivo
+            MOV BX, AX      ;salva ponteiro do arquivo aberto
+
+            MOV CX, var_control_o_size      ;quantidade de bytes para escrever
+            lea dx, var_control_o        
+            MOV AH, 40h
+            INT 21h
+            
+            MOV AH, 3Eh     ;fechar arquivo
+            INT 21h
+        __etp2_erro_ao_abrir_arquivo:
+
+    popa
+ret
