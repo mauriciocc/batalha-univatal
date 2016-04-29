@@ -232,10 +232,10 @@ call _desenha_objeto
 
 SUB cont_objeto,1      ; VERIFICA SE AS 4 EMBARCACOES FORAM UTILIZADAS
 JNZ volta_msgm
-    
+
 
 mov var_tabuleiro, 2
-call _desenha_tabuleiro 
+call _desenha_tabuleiro
 
 
 
@@ -331,9 +331,6 @@ loop_game:
         
         ; processa jogada do outro player
         call _substitui_disparo_outro_player
-        
-        mov var_tabuleiro, 1
-        call _desenha_tabuleiro
         
         ; Salva 1 caso nao acertou e 2 caso acertou disparo
         inc al        
@@ -859,14 +856,19 @@ _substitui_disparo_outro_player:
         __sdop_acertou_algo_end:
 
 
-        ;pega caracter e substui nas memorias
-        lea si, var_disparos_outro_player
-        add si, ax
-        mov [si], bl
-
+        ;pega caracter e substui em memoria
         lea si, var_status_tabuleiro1
         add si, ax
         mov [si], bl
+
+        push posX
+        push posY
+            call _extrai_x_y_de_memoria
+            mov str_buffer[0], bl
+            mov var_tabuleiro, 1
+            call _desenha_caracter_no_tabuleiro 
+        pop posY
+        pop posX
 
         mov ax, 0
         mov al, bh
@@ -875,6 +877,21 @@ _substitui_disparo_outro_player:
     pop bx
     pop si
 
+ret
+
+_extrai_x_y_de_memoria:
+pusha
+    mov bh, const_numero_linhas
+    div bh
+    mov bx, 0
+    mov bl, ah
+    mov posX, bx
+    mov bl, al
+    mov posY, bx
+    
+    inc posX
+    inc posY
+popa
 ret
 
 
