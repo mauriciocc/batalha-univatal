@@ -174,13 +174,13 @@ mov cx, mensagem_valor1_2_size
 CALL _fast_string_write
 call _cursor
 
-           
+
 CALL SEL_OBJETO
-                       
+
 
 mov aux,17
 call LIMPA_MSG
- 
+
 mov posX, 1
 mov posY,18
 lea bp, mensagem_valor2
@@ -203,13 +203,13 @@ call _cursor
 CALL AGUARDA_LETRA
     MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
 CALL AGUARDA_NUMERO
-    MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA 
-    
-                           
+    MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA
+
+
 ; Aqui posicao do objeto sera validada
 ; Caso retorne 1 no valor AL quer dizer que a posicao e valida
-; Caso retorne 0 quer dizer que sobrepoem outra embarcacao ou fica fora do tabuleiro                            
-call _valida_posicao_objeto   
+; Caso retorne 0 quer dizer que sobrepoem outra embarcacao ou fica fora do tabuleiro
+call _valida_posicao_objeto
 
 cmp al, 1
 
@@ -366,8 +366,9 @@ loop_game:
         ;Aqui player joga
 
           ;;;;;;;;;*************************>>>>>>>>>>>>>>>>>>>>>>>>
-           mov aux,15
-           call LIMPA_MSG
+          mov aux,15
+          call LIMPA_MSG
+
           NOVA_JOGADA:
               mov posX, 1
               mov posY,15
@@ -394,10 +395,12 @@ loop_game:
 
 
               desenha_disparo:
-              call _calcula_posicao_memoria
+              call _calcula_posicao_memoria              
               mov posicao, ax
+              
               mov var_tabuleiro, 2
-              call _desenha_tabuleiro            
+              mov str_buffer[0], const_posicao_tiro_feito
+              call _desenha_caracter_no_tabuleiro
 
         
         
@@ -415,24 +418,27 @@ loop_game:
         je acertou_disparo
             ;Aqui quer dizer que errou o disparo
             call _outro_player_joga
+                        
+            ; Deixa caracter para desenho
+            mov str_buffer[0], const_agua_atingida
             
-            
-            lea si, var_status_tabuleiro2
-            add si, posicao
-            mov [si], const_agua_atingida
             jmp pula_acertou_disparo                    
         acertou_disparo:
             
-            call _calcula_posicao_memoria
-            lea si, var_status_tabuleiro2
-            add si, posicao
-            mov [si], const_embarcacao_atingida
+            ; Deixa caracter para desenho
+            mov str_buffer[0], const_embarcacao_atingida
         
         pula_acertou_disparo:    
             
+        ; Registra em memoria
+        lea si, var_status_tabuleiro2
+        add si, posicao
+        mov al, str_buffer[0]        
+        mov [si], al    
+        
         
         mov var_tabuleiro, 2
-        call _desenha_tabuleiro
+        call _desenha_caracter_no_tabuleiro
         
         ; Sinaliza fim do processamento
         mov var_control[2], 0
@@ -449,6 +455,31 @@ jmp loop_game
 
 ret
 
+
+_desenha_caracter_no_tabuleiro:
+    pusha
+    push posX
+    push posY
+        
+        cmp var_tabuleiro, 1
+        
+        je __dcnt_tab_1
+            add posX, const_tabuleiro2_x
+            add posY, const_tabuleiro2_y
+            jmp __dcnt_tab_end
+        __dcnt_tab_1:
+            add posX, const_tabuleiro1_x
+            add posY, const_tabuleiro1_y
+        __dcnt_tab_end:
+        
+        lea bp, str_buffer
+        mov cx, 1
+        CALL _fast_string_write
+        
+    pop posY
+    pop posX
+    popa             
+ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
 
