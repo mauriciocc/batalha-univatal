@@ -2,26 +2,32 @@ org 100h
 
 .DATA
 
-    mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:"
+   mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:   "
     mensagem_inicial_size = $ - mensagem_inicial
 
-    mensagem_valor1   DB "ESCOLHA UM DOS SEGUINTES OBJETOS QUE DESEJA POSICIONAR NO TABULEIRO: "
+    mensagem_valor1   DB "ESCOLHA UM DOS SEGUINTES OBJETOS QUE DESEJA POSICIONAR NO TABULEIRO:    "
     mensagem_valor1_size = $ - mensagem_valor1
 
-    mensagem_valor1_2 DB "          {1}- BARRIL, {2}- BOTE, {3}- LANCHA, {4}- BARCACA          "
+    mensagem_valor1_2 DB "          {1}- BARRIL, {2}- BOTE, {3}- LANCHA, {4}- BARCACA             "
     mensagem_valor1_2_size = $ - mensagem_valor1_2
 
-    mensagem_valor2 DB   "DIGITE A ORIENTACAO DO OBJETO (H-HORIZONTAL, V-VERTICAL):            "
+    mensagem_valor2 DB   "DIGITE A ORIENTACAO DO OBJETO (H-HORIZONTAL, V-VERTICAL):               "
     mensagem_valor2_size = $ - mensagem_valor2
 
-    mensagem_valor3 DB   "DIGITE A COLUNA E EM SEGUIDA A LINHA( EX: C3 )                       "
+    mensagem_valor3 DB   "DIGITE A COLUNA E EM SEGUIDA A LINHA( EX: C3 )                          "
     mensagem_valor3_size = $ - mensagem_valor3
     
-    mensagem_valor4 DB   "EMBARCACAO JA UTILIZADA, ESCOLHA OUTRA EMBARCACAO PARA POSICIONAR    "
+    mensagem_valor4 DB   "EMBARCACAO JA UTILIZADA, ESCOLHA OUTRA EMBARCACAO PARA POSICIONAR       "
     mensagem_valor4_size = $ - mensagem_valor4
     
-    mensagem_valor5 DB   "                                                                     "
-    mensagem_valor5_size = $ - mensagem_valor5 
+    mensagem_valor5 DB   "                                                                        "
+    mensagem_valor5_size = $ - mensagem_valor5
+
+    mensagem_valor6 DB   "EMBARCACAO NAO PODE SER INSERIDA NESTA POSICAO, ESCOLHA NOVAMENTE       "
+    mensagem_valor6_size = $ - mensagem_valor6
+
+    mensagem_valor7 DB   "DIGITE A COLUNA E APOS A LINHA PARA DISPARAR O TORPEDO EM SEU ADVERSARIO"
+    mensagem_valor7_size = $ - mensagem_valor7
 
     msg_aguardando_outro_player DB "AGUARDANDO OUTRO PLAYER POSICIONAR SUAS EMBARCACOES..."
     msg_aguardando_outro_player_size = $ - msg_aguardando_outro_player
@@ -121,7 +127,7 @@ org 100h
     var_objeto DB const_objeto_barril
 
     mult DB 0
-    aux  DB 0    
+    aux  DW 0
     cont_objeto DB 4
     cont_barril DB 0
     cont_bote DB 0
@@ -172,12 +178,8 @@ call _cursor
 CALL SEL_OBJETO
                        
 
-mov posX, 1
-mov posY,17
-lea bp, mensagem_valor5
-mov cx, mensagem_valor5_size
-CALL _fast_string_write
-call _cursor
+mov aux,17
+call LIMPA_MSG
  
 mov posX, 1
 mov posY,18
@@ -213,7 +215,14 @@ cmp al, 1
 
 je __posicao_valida_desenha_objeto
 
-; Aqui pode mostrar alguma mensagem
+;;;;;;;<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>
+ mov posX, 1
+    mov posY,20
+    lea bp, mensagem_valor6
+    mov cx, mensagem_valor6_size
+    CALL _fast_string_write
+    call _cursor
+
 jmp _seleciona_posicao_objeto
 
 __posicao_valida_desenha_objeto:
@@ -274,13 +283,13 @@ aguardando_outro_player:
     cmp var_control_o[0], 1
 
     je outro_player_esta_pronto
-    
+
     mov posX, 1
     mov posY, 25
     lea bp, msg_aguardando_outro_player
     mov cx, msg_aguardando_outro_player_size
     CALL _fast_string_write
-    call _cursor    
+    call _cursor
     
 
     jmp aguardando_outro_player
@@ -327,8 +336,8 @@ loop_game:
         call _desenha_tabuleiro
         
         ; Salva 1 caso nao acertou e 2 caso acertou disparo
-        ;inc al        
-        mov var_control[3], 2     
+        inc al        
+        mov var_control[3], al     
         call _escreve_status_player
         
         call _aguarda_outro_player_processar
@@ -353,10 +362,43 @@ loop_game:
         mov var_control[4], 0
         call _escreve_status_player 
         
-        call _wait_key_press
-        ;Aqui player joga  
-        
-        ;Codigo jeremias
+
+        ;Aqui player joga
+
+          ;;;;;;;;;*************************>>>>>>>>>>>>>>>>>>>>>>>>
+           mov aux,15
+           call LIMPA_MSG
+          NOVA_JOGADA:
+              mov posX, 1
+              mov posY,15
+              lea bp, mensagem_valor7
+              mov cx, mensagem_valor7_size
+              CALL _fast_string_write
+              call _cursor
+
+              CALL AGUARDA_LETRA
+                  MOV posX, AX          ; SALVA VALOR DIGITADO DA COLUNA
+              CALL AGUARDA_NUMERO
+                  MOV posY, AX          ; SALVA VALOR DIGITADO DA LINHA
+
+              CALL _efetua_disparo
+
+
+              cmp AL,1
+              JE desenha_disparo
+              
+              ;Se cair aqui mostra mensagem de jogada ja feita
+              ; pede posicoes denovo
+              jmp NOVA_JOGADA
+
+
+
+              desenha_disparo:
+              call _calcula_posicao_memoria
+              mov posicao, ax
+              mov var_tabuleiro, 2
+              call _desenha_tabuleiro            
+
         
         
         ; Informa jogada
@@ -368,20 +410,35 @@ loop_game:
         ; Processa resposta
         cmp var_control_o[3], 2
         
+            
+        
         je acertou_disparo
             ;Aqui quer dizer que errou o disparo
             call _outro_player_joga
-                                
+            
+            
+            lea si, var_status_tabuleiro2
+            add si, posicao
+            mov [si], const_agua_atingida
+            jmp pula_acertou_disparo                    
         acertou_disparo:
+            
+            call _calcula_posicao_memoria
+            lea si, var_status_tabuleiro2
+            add si, posicao
+            mov [si], const_embarcacao_atingida
+        
+        pula_acertou_disparo:    
+            
+        
+        mov var_tabuleiro, 2
+        call _desenha_tabuleiro
         
         ; Sinaliza fim do processamento
         mov var_control[2], 0
         mov var_control[3], 0
         mov var_control[4], 1
         call _escreve_status_player
-        
-        inc posX
-
 
 
 
@@ -393,9 +450,28 @@ jmp loop_game
 ret
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                                                                 
-                                                                 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;FUNCAO PARA LIMPAR AS MENSAGENS
+
+LIMPA_MSG:
+
+ mov AX, aux
+ mov posY, AX
+
+ LIMPA_SEGUE:
+ mov posX, 1
+ lea bp, mensagem_valor5
+ mov cx, mensagem_valor5_size
+ CALL _fast_string_write
+ call _cursor
+ inc posY
+ cmp posY,21
+ JNE LIMPA_SEGUE
+ret
+
 ;>>>>>>>>>>>>>>>>>>>>FUNCAO AGUARDAR SELECAO DE ORIENTACAO OBJETO
 
 ORIENTACAO:
@@ -417,7 +493,7 @@ TESTA_ORIENTACAO:
                      
 SALVA_ORIENTACAO:
     mov orientacao_escrita,AL
-
+    call mostra_letra    ;;;;;;;;;<<<<<<<<<<<<<<<<<<<<<<<<
 ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -456,7 +532,9 @@ TESTA_OBJETO:
     JMP TESTA_OBJETO       ; RECURSAO
 
 SALVA_OBJETO:
-     SUB AL,48 
+
+	 call mostra_letra  ;;;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+     SUB AL,48
      mov var_objeto,AL     
      
      testa_barril:
@@ -524,12 +602,20 @@ TESTA_LETRA:
 
 SALVA_LETRA:
 
+    call mostra_letra
     MOV AH, 0
     SUB AL,64
 
 
 ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<
+mostra_letra:
+
+    mov dl,al
+    mov ah,2
+    int 21h
+	ret
 
 
 
@@ -555,7 +641,7 @@ TESTA_NUMERO:
     JMP TESTA_NUMERO        ; RECURSAO
 
 SALVA_NUMERO:
-
+	call mostra_letra
     MOV AH, 0
     SUB AL,48
 
@@ -589,8 +675,8 @@ _outro_player_joga:
 ;-------------------------------------------------------------
 _aguarda_resposta:
     call _le_arquivo_outro_player    
-    cmp var_control_o[3], 1
-    jne _aguarda_resposta 
+    cmp var_control_o[3], 0
+    je _aguarda_resposta 
 ret
 
 ;-------------------------------------------------------------
@@ -605,15 +691,16 @@ ret
 ;  - 1 se o outro player efetuou a jogada 
 ;  - 0 se o outro player ainda nao efetuou a jogada 
 _outro_player_jogou:
-    cmp player, 1
-    je __opjo_player_1
-        ;player 2 - Verifica no arquivo do player 1 pois e o master do jogo
-        call _le_arquivo_outro_player
-        mov al, var_control_o[2]
-        jmp __opjo_end
-    __opjo_player_1:
-        mov al, var_control[2]        
-    __opjo_end:
+    call _le_arquivo_outro_player
+    mov al, var_control_o[2]
+    ;cmp player, 1
+;    je __opjo_player_1
+;        ;player 2 - Verifica no arquivo do player 1 pois e o master do jogo
+;
+;        jmp __opjo_end
+;    __opjo_player_1:
+;        mov al, var_control[2]        
+;    __opjo_end:
 ret
 
 ;-------------------------------------------------------------
@@ -836,7 +923,7 @@ _valida_disparo:
     __vd_fim:
     pop si
     pop bx
-
+ret
 
 
 
