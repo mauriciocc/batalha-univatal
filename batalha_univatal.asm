@@ -340,6 +340,11 @@ loop_game:
         call _aguarda_outro_player_processar
         
         
+
+
+        ;Lê status do player do arquivo (pode ter sido modificado)
+        call _le_status_player
+
         ; Limpa flags
         mov var_control[2], 0
         mov var_control[3], 0
@@ -689,15 +694,17 @@ ret
 ;-------------------------------------------------------------
 _outro_player_joga:
  cmp player, 1
- je __opj_player_1
+ je __opjasd_player_1
     ;aqui e player 2
+    call _le_arquivo_outro_player
     mov var_control_o[1], 1
     call _escreve_troca_player2
- ret 
- __opj_player_1:
+    jmp __opjasd_player_end
+ __opjasd_player_1:
     mov var_control[1], 2
-    call _escreve_status_player   
- ret 
+    call _escreve_status_player
+  __opjasd_player_end:
+ ret
 
 
 ;-------------------------------------------------------------
@@ -1570,6 +1577,36 @@ _escreve_status_player:
 
     popa
 
+RET
+
+_le_status_player:
+    pusha
+        cmp player, 1
+
+        je __lesp_player_1
+            lea dx, file_player_2            
+            jmp __lesp_player_end
+        __lesp_player_1:
+            lea dx, file_player_1
+         __lesp_player_end:
+
+        MOV AH, 3Dh     ;abertura de arquivo
+        MOV AL, 0       ;apenas para leitura
+        INT 21h
+
+        JC __lesp_erro_ao_abrir_arquivo
+            MOV BX, AX      ;salva ponteiro do arquivo aberto
+            
+            MOV CX, var_control_size      ;quantidade de bytes para ler
+            lea DX, var_control
+            MOV AH, 3Fh
+            INT 21h
+
+            MOV AH, 3Eh     ;fechar arquivo
+            INT 21h
+        __lesp_erro_ao_abrir_arquivo:         
+    popa
+    
 RET
 
 _escreve_troca_player2:
