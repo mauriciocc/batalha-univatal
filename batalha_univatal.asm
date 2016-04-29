@@ -1157,27 +1157,22 @@ _desenha_tabuleiro:
 
         inc posY ; Proxima linha
         mov str_buffer[0], al ; Move o numero da coluna
-        
-        mov di, 1
-        mov ch, 0
-         __dt_stat_loop_cols:
-            push ax
-                mov al, [si]
-                mov str_buffer[di], al
-            pop ax
-
-        inc di
-        inc si
-        inc ch
-        cmp ch, const_numero_colunas
-        jl __dt_stat_loop_cols
-
         push cx
             lea bp, str_buffer
-            mov cx, const_numero_colunas+1
+            mov cx, 1
             call _fast_string_write
         pop cx
+        push cx
+            inc posX
+            mov bp, si
+            mov cx, const_numero_colunas
+            call _fast_string_write
+            dec posX
+        pop cx
 
+
+        
+        add si, const_numero_colunas      
         inc al
         inc cl
         cmp cl, const_numero_linhas
