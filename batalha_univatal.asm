@@ -3,7 +3,7 @@ org 100h
 .DATA
   
     ; Define se e o player 1 ou 2
-    player DB 2
+    player DB 1
         
 
     mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:   "
@@ -353,12 +353,14 @@ loop_game:
         
         ; Checa se o outro player jogou
         call _outro_player_jogou        
-        cmp al, 1
+        cmp al, 0
         
-        ; Se for diferente de 1 quer dizer que outro player ainda nao jogou
-        jne loop_game
+        ; Se for = a 0 quer dizer que outro player ainda nao jogou
+        je loop_game
         
         ; processa jogada do outro player
+        mov ah, 0
+        dec al
         call _substitui_disparo_outro_player
         
         ; Salva 1 caso nao acertou e 2 caso acertou disparo
@@ -436,7 +438,9 @@ loop_game:
         
         
         ; Informa jogada
-        mov var_control[2], 1
+        mov ax, posicao
+        inc ax
+        mov var_control[2], al
         call _escreve_status_player
         
         call _aguarda_resposta
@@ -888,22 +892,10 @@ _substitui_disparo_outro_player:
     push si
     push bx
 
-        lea si, var_disparos_outro_player
-        call _busca_disparo_outro_player
-
-        cmp ax, -1
-
-        jne __sdop_encontrou_disparo
-            mov ax, 0
-            jmp __sdop_end
-        __sdop_encontrou_disparo:
-
-        ;checa se acertou algo
-
         lea si, var_status_tabuleiro1
-        add si, ax
 
         push ax
+            add si, ax
             mov al, [si]
             call _acertou_algo
             cmp al, 1
@@ -957,54 +949,6 @@ pusha
     inc posX
     inc posY
 popa
-ret
-
-
-;-------------------------------------------------------------
-; Realiza busca por disparo efetuado (ver constante "const_posicao_tiro_feito")
-; Parametros:
-;  - SI (deve estar setado no offset do vetor a ser verificado, acredito que sera "var_disparos_outro_player")
-; Logica:
-;  Busca no vetor um valor igual a "const_posicao_tiro_feito"
-;  Caso encontre: retorna o indice do elemento dentro do vetor no registrador AX
-;  Caso nao econtre: retorna no AX -> -1
-;
-; Exemplo de uso:
-
-;; Escreve disparo na posicao 3 do vetor (si+2)
-;lea si, var_disparos_outro_player
-;add si, 2
-;mov [si], const_posicao_tiro_feito
-;
-;; Busca a posicao do disparo, apos chamada o registrador AX contera o valor 2
-;lea si, var_disparos_outro_player
-;call _busca_disparo_outro_player
-
-_busca_disparo_outro_player:
-
-    mov ax, 0
-
-    __bdop_loop:
-        push si
-            add si, ax
-            mov bl, [si]
-        pop si
-
-        cmp bl, const_posicao_tiro_feito
-
-        je __bdop_end_loop
-
-        inc ax
-
-        cmp ax, 64
-        je __bdop_end_loop_not_found
-
-
-    jmp __bdop_loop
-
-    __bdop_end_loop_not_found:
-    mov ax, -1
-    __bdop_end_loop:
 ret
 
 ;-------------------------------------------------------------
