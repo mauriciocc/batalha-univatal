@@ -1,9 +1,16 @@
 org 100h           
 
 .DATA
+  
+    ; Define se e o player 1 ou 2
+    player DB 2
+        
 
-   mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:   "
+    mensagem_inicial DB  "BEM VINDO AO UNIVATAL, FAVOR DIGITE EM MAIUSCULO, A POSICAO DE SEUS NAVIOS:   "
     mensagem_inicial_size = $ - mensagem_inicial
+
+    msg_player DB "VOCE E O PLAYER  "
+    msg_player_size = $ - msg_player
 
     mensagem_valor1   DB "ESCOLHA UM DOS SEGUINTES OBJETOS QUE DESEJA POSICIONAR NO TABULEIRO:    "
     mensagem_valor1_size = $ - mensagem_valor1
@@ -85,10 +92,10 @@ org 100h
     const_char_inicio_linhas         EQU '1'
 
     ; Posicoes iniciais dos tabuleiros
-    const_tabuleiro1_x          EQU 1
+    const_tabuleiro1_x          EQU 41
     const_tabuleiro1_y          EQU 5
 
-    const_tabuleiro2_x          EQU 41
+    const_tabuleiro2_x          EQU 1
     const_tabuleiro2_y          EQU 5
 
     ; Tamanho do tabuleiro
@@ -120,9 +127,6 @@ org 100h
     var_control_o DB 6 DUP(0)
     var_disparos_outro_player DB 64 DUP(const_agua)
     var_control_o_size = $ - var_control_o
-
-    ; Define se e o player 1 ou 2
-    player DB 1
 
     posX DW 0
     posY DW 0
@@ -162,6 +166,15 @@ lea bp, mensagem_inicial
 mov cx, mensagem_inicial_size
 call _fast_string_write
 
+mov al, player
+add al, 48
+mov msg_player[msg_player_size-1], al
+
+mov posX, 1
+mov posY, 2
+lea bp, msg_player
+mov cx, msg_player_size
+call _fast_string_write
 
 ; AQUI CHAMAMOS AS FUNCOES PARA POSICIONAMENTO DE OBJETOS NO TABULEIRO DO JOGADOR
 ;;;;;;;;;**************************************************************
