@@ -34,6 +34,14 @@ org 100h
     
     msg_aguardando_outro_player_jogar DB "AGUARDANDO OUTRO PLAYER JOGAR..."
     msg_aguardando_outro_player_jogar_size = $ - msg_aguardando_outro_player_jogar
+
+    msg_venceu_partida DB "PARABENS, VOCE VENCEU A PARTIDA !!!!"
+    msg_venceu_partida_size = $ - msg_venceu_partida
+
+    msg_perdeu_partida DB "VOCE PERDEU ESTA PARTIDA  =("
+    msg_perdeu_partida_size = $ - msg_perdeu_partida
+
+    
     
     file_player_1 DB "JOGADOR1.TXT", 0  
     file_player_2 DB "JOGADOR2.TXT", 0  
@@ -103,12 +111,13 @@ org 100h
     ; 2. Sinaliza que player que esta jogando realizou a jogada
     ; 3. Sinaliza que a jogada do player foi processada e o retorno pode ser lido
     ; 4. Sinaliza o fim do processamento do player
-    var_control DB 5 DUP(0)
+    ; 5. Sinaliza vitoria do player
+    var_control DB 6 DUP(0)
     var_status_tabuleiro2 DB 64 DUP(const_agua)
     var_control_size = $ - var_control
     
     
-    var_control_o DB 5 DUP(0)
+    var_control_o DB 6 DUP(0)
     var_disparos_outro_player DB 64 DUP(const_agua)
     var_control_o_size = $ - var_control_o
 
@@ -134,6 +143,8 @@ org 100h
     cont_lancha DB 0
     cont_barcaca DB 0
     
+    var_acertos DB 0
+
     str_buffer DB 64 DUP(?)
 
 .CODE
@@ -305,7 +316,12 @@ CALL _fast_string_write
 
 loop_game:
 
-   
+    ; Verifica se jogo acabou
+    cmp var_control[5], 1
+    je player_venceu_partida
+    call _le_arquivo_outro_player
+    cmp var_control_o[5], 1
+    je player_perdeu_partida
 
     call _verifica_se_player_joga
     
@@ -426,7 +442,7 @@ loop_game:
             
             jmp pula_acertou_disparo                    
         acertou_disparo:
-            
+            inc var_acertos
             ; Deixa caracter para desenho
             mov str_buffer[0], const_embarcacao_atingida
         
@@ -446,6 +462,13 @@ loop_game:
         mov var_control[2], 0
         mov var_control[3], 0
         mov var_control[4], 1
+
+        cmp var_acertos, 10
+
+        jne pula_player_venceu
+          mov var_control[5], 1
+        pula_player_venceu:         
+        
         call _escreve_status_player
 
 
@@ -453,7 +476,29 @@ loop_game:
 jmp loop_game 
 
 
+player_venceu_partida:
 
+  lea bp, msg_venceu_partida
+  mov cx, msg_venceu_partida_size
+  jmp player_fim_partida
+
+player_perdeu_partida:
+
+  lea bp, msg_perdeu_partida
+  mov cx, msg_perdeu_partida_size
+
+player_fim_partida:
+
+mov posX, 1
+mov posY, 25
+
+pusha
+  lea bp, mensagem_valor5
+  mov cx, mensagem_valor5_size
+  CALL _fast_string_write 
+popa
+
+CALL _fast_string_write 
 
 ret
 
